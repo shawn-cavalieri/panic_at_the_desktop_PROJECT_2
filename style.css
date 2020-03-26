@@ -1,0 +1,43 @@
+.line {
+    fill: none;
+    stroke-width: 2px;
+  }
+  
+  .orange {
+    stroke: orange;
+  }
+  
+  .green {
+    stroke: green;
+  }
+  .red {
+    stroke: red;
+  }
+  .blue {
+    stroke: blue;
+  }
+  .deactivate {
+    opacity: 0;
+  }
+  .activate {
+    opacity: 100;
+  }
+  .active {
+    font-weight: bold;
+    transition: fill 0.3s ease-out;
+    text-anchor: middle;
+  }
+  
+  .inactive {
+    font-weight: lighter;
+    transition: fill 0.3s ease-out;
+    text-anchor: middle;
+  }
+  .inactive:hover {
+    fill: #000;
+    cursor: pointer;
+  }
+  .active:hover {
+    fill: #000;
+    cursor: pointer;
+  }
