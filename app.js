@@ -1,11 +1,11 @@
-var svgWidth = 970;
+var svgWidth = 1100;
 var svgHeight = 550;
 
 var margin = {
-  top: 20,
-  right: 40,
+  top: 40,
+  right: 20,
   bottom: 90,
-  left: 100
+  left: 30
 };
 
 // Create an SVG wrapper, append an SVG group that will hold our chart,
@@ -45,6 +45,32 @@ function deactivateLabel(label) {
         .classed("active", false)
         .classed("inactive", true);
   }
+
+function make_toolTip(circlesGroup, chosenYAxis) {
+
+    var toolTip = d3.tip()
+        .attr("class", "d3-tip")
+        .html(function(d) {
+            if (chosenYAxis === "unemp") {
+                return (`<strong>${new Date(d.Year).getFullYear()}</strong><br> Unemployment Rate: ${d.Unemployment_Rate}%`)
+            }
+            else if (chosenYAxis === "gdp") {
+                return (`<strong>${new Date(d.Year).getFullYear()}</strong><br> GDP Growth: ${d.GDP_Growth}%`)
+            }
+            else {
+                return (`<strong>${new Date(d.Year).getFullYear()}</strong><br> Inflation Rate: ${d.Inflation}%`)
+            }
+        
+    });
+    circlesGroup.call(toolTip);
+    circlesGroup.on("mouseover", function(data, index, selection) {
+    toolTip.show(data, selection[index])
+})
+    .on("mouseout", function(data) {
+        toolTip.hide(data);
+    });
+}
+
 d3.json("Unemployment_Inflation.json").then(function(data, err) {
     if (err) throw err;
     // parse data
@@ -54,6 +80,7 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
       d.Inflation = +d.Inflation;
       d.Year = parseTime(d.Year);
     });
+
     var xTimeScale = d3.scaleTime()
         .domain(d3.extent(data, d => d.Year))
         .range([0, width]);
@@ -76,7 +103,8 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
         return d3.axisLeft(yLinearScale)
             .ticks(10)
     }
-    chartGroup.append("g").attr("transform",`translate(${width - 830}, ${height})`).call(bottomAxis);
+    chartGroup.append("g").attr("transform",`translate(0, ${height})`).call(bottomAxis);
+    chartGroup.append("g").call(bottomAxis);
     // add y-axis (left)
     chartGroup.append("g").call(leftAxis);
 
@@ -100,18 +128,52 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
         .data([data])
         .attr("d", line2)
         .classed("line orange", true);
+        
     var inflation_line = chartGroup.append("path")
         .data([data])
         .attr("d", line3)
         .classed("line red", true);
-        
+
+    var unemp_circlesGroup = chartGroup.selectAll()
+      .data(data)
+      .enter()
+      .append("circle")
+      .attr("cx", d => xTimeScale(d.Year))
+      .attr("cy", d => yLinearScale(d.Unemployment_Rate))
+      .attr("r", 3)
+      .attr("fill", "green");//border
+
+    make_toolTip(unemp_circlesGroup, "unemp");
+
+    var gdp_circlesGroup = chartGroup.selectAll()
+      .data(data)
+      .enter()
+      .append("circle")
+      .attr("cx", d => xTimeScale(d.Year))
+      .attr("cy", d => yLinearScale(d.GDP_Growth))
+      .attr("r", 3)
+      .attr("fill", "orange");
+
+    make_toolTip(gdp_circlesGroup, "gdp");
+
+    var inflation_circlesGroup = chartGroup.selectAll()
+      .data(data)
+      .enter()
+      .append("circle")
+      .attr("cx", d => xTimeScale(d.Year))
+      .attr("cy", d => yLinearScale(d.Inflation))
+      .attr("r", 3)
+      .attr("fill", "red");
+
+    make_toolTip(inflation_circlesGroup, "inflation")
+
     chartGroup.append("g")			
         .attr("class", "grid")
         .attr("transform", "translate(0," + height + ")")
         .call(make_x_gridlines()
             .tickSize(-height)
             .tickFormat("")
-        )
+        );
   
     // add the Y gridlines
     chartGroup.append("g")			
@@ -119,7 +181,7 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
         .call(make_y_gridlines()
             .tickSize(-width)
             .tickFormat("")
-        )
+        );
 
     var unempLabel = chartGroup.append("text")
         .attr("y", height + 30)
@@ -138,6 +200,7 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
         .attr("font-size", "16px")
         .attr("fill", "orange")
         .attr("value", "gdp")
+        .classed("inactive", true)
         .text("GDP Growth Per Year (%)");
 
     var inflationLabel = chartGroup.append("text")
@@ -147,53 +210,100 @@ d3.json("Unemployment_Inflation.json").then(function(data, err) {
         .attr("font-size", "16px")
         .attr("fill", "red")
         .attr("value", "inflation")
+        .classed("inactive", true)
         .text("Inflation Per Year (%)");
+
+    var allLabel = chartGroup.append("text")
+        .attr("y", height + 35)
+        .attr("x", 0)
+        .attr("text-anchor", "middle")
+        .attr("font-size", "16px")
+        .attr("value", "all")
+        .text("All Data")
+        .attr("fill", "white")
+        .classed("active", true);
 
     var inflationVgdp = chartGroup.append("text")
         .attr("y", height + 90)
         .attr("x", width/2)
         .attr("text-anchor", "middle")
         .attr("font-size", "16px")
-        .attr("fill", "blue")
         .attr("value", "inflationVgdp")
+        .attr("fill", "white")
+        .classed("inactive", true)
         .text("Inflation vs GDP (%)");
-    
+
+    chartGroup.append("text")
+        .attr("y", height - 430)
+        .attr("x", width/2)
+        .attr("fill", "white")
+        .attr("text-anchor", "middle")
+        .attr("font-size", "18px")
+        .text("Unemployment Rate  ( 1929 - 2019 )");
+        
     chartGroup.selectAll("text")
         .on("click", function() {
             var value = d3.select(this).attr("value");
             if (value === "gdp") {
                 activateLabel(gdpLabel);
                 activateLine(gdp_line);
+                activateLine(gdp_circlesGroup);
                 deactivateLabel(inflationLabel);
                 deactivateLine(inflation_line);
+                deactivateLine(inflation_circlesGroup);
                 deactivateLabel(unempLabel);
                 deactivateLabel(inflationVgdp);
+                deactivateLabel(allLabel);
             }
             else if (value === "inflation") {
                 activateLabel(inflationLabel);
                 activateLine(inflation_line);
+                activateLine(inflation_circlesGroup);
                 deactivateLine(gdp_line);
                 deactivateLabel(gdpLabel);
                 deactivateLabel(unempLabel);
                 deactivateLabel(inflationVgdp);
+                deactivateLine(gdp_circlesGroup);
+                deactivateLabel(allLabel);
             }
             else if (value === "inflationVgdp") {
                 activateLabel(inflationVgdp);
                 activateLine(gdp_line);
                 activateLine(inflation_line);
+                activateLine(gdp_circlesGroup);
+                activateLine(inflation_circlesGroup);
                 deactivateLine(unemp_line);
                 deactivateLabel(unempLabel);
+                deactivateLine(unemp_circlesGroup);
                 deactivateLabel(gdpLabel);
                 deactivateLabel(inflationLabel);
+                deactivateLabel(allLabel);
             }
-            else {
-                deactivateLine(inflation_line);
-                deactivateLine(gdp_line);
-                deactivateLabel(gdpLabel);
+            else if (value === "unemp") {
                 deactivateLabel(inflationLabel);
+                deactivateLabel(gdpLabel);
+                deactivateLabel(inflationVgdp);
                 activateLabel(unempLabel);
                 activateLine(unemp_line);
+                activateLine(unemp_circlesGroup);
+                deactivateLine(inflation_line);
+                deactivateLine(inflation_circlesGroup);
+                deactivateLine(gdp_line);
+                deactivateLine(gdp_circlesGroup);
+                deactivateLabel(allLabel);
+            }
+            else {
+                deactivateLabel(gdpLabel);
+                deactivateLabel(inflationLabel);
+                deactivateLabel(unempLabel);
+                activateLine(unemp_line);
+                activateLine(unemp_circlesGroup);
+                activateLine(gdp_line);
                 deactivateLabel(inflationVgdp);
+                activateLine(inflation_circlesGroup);
+                activateLine(inflation_line);
+                activateLine(gdp_circlesGroup);
+                activateLabel(allLabel);
             }
         })
     }).catch(function(error) {
